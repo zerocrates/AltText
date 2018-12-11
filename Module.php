@@ -51,6 +51,10 @@ ALTER TABLE alt_text ADD CONSTRAINT FK_54A36CBEA9FDD75 FOREIGN KEY (media_id) RE
             'view_helper.thumbnail.attribs',
             function (Event $event) {
                 $media = $event->getParam('primaryMedia');
+                if (!$media) {
+                    return;
+                }
+
                 $attribs = $event->getParam('attribs');
 
                 $altText = $this->getAltTextForMedia($media);
