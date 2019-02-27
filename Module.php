@@ -163,14 +163,18 @@ ALTER TABLE alt_text ADD CONSTRAINT FK_54A36CBEA9FDD75 FOREIGN KEY (media_id) RE
 
         $media = $event->getParam('entity');
         $altText = $this->getAltTextForMedia($media);
+        $requestAltText = $request->getValue('o-module-alt-text:alt-text', '');
 
         if (!$altText) {
+            if ($requestAltText === '') {
+                return;
+            }
             $altText = new AltTextEntity;
             $altText->setMedia($media);
             $this->getServiceLocator()->get('Omeka\EntityManager')->persist($altText);
         }
 
-        $altText->setAltText($request->getValue('o-module-alt-text:alt-text'));
+        $altText->setAltText($requestAltText);
     }
 }
 
