@@ -33,9 +33,8 @@ class Module extends AbstractModule
     public function install(ServiceLocatorInterface $serviceLocator)
     {
         $conn = $serviceLocator->get('Omeka\Connection');
-        $conn->exec('
-CREATE TABLE alt_text (id INT AUTO_INCREMENT NOT NULL, media_id INT NOT NULL, alt_text LONGTEXT DEFAULT NULL, UNIQUE INDEX UNIQ_54A36CBEA9FDD75 (media_id), PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci ENGINE = InnoDB;
-ALTER TABLE alt_text ADD CONSTRAINT FK_54A36CBEA9FDD75 FOREIGN KEY (media_id) REFERENCES media (id) ON DELETE CASCADE;');
+        $conn->exec('CREATE TABLE alt_text (id INT AUTO_INCREMENT NOT NULL, media_id INT NOT NULL, alt_text LONGTEXT DEFAULT NULL, UNIQUE INDEX UNIQ_54A36CBEA9FDD75 (media_id), PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci ENGINE = InnoDB');
+        $conn->exec('ALTER TABLE alt_text ADD CONSTRAINT FK_54A36CBEA9FDD75 FOREIGN KEY (media_id) REFERENCES media (id) ON DELETE CASCADE');
     }
 
     public function uninstall(ServiceLocatorInterface $serviceLocator)
