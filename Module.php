@@ -6,11 +6,15 @@ use AltText\Db\Event\Listener\DetachOrphanMappings;
 use AltText\Entity\AltText as AltTextEntity;
 use Omeka\Api\Representation\MediaRepresentation;
 use Omeka\Entity\Media as MediaEntity;
+use Omeka\Form\Element\PropertySelect;
 use Omeka\Module\AbstractModule;
 use Zend\EventManager\Event;
 use Zend\EventManager\SharedEventManagerInterface;
+use Zend\Form\Form;
+use Zend\Mvc\Controller\AbstractController;
 use Zend\Mvc\MvcEvent;
 use Zend\ServiceManager\ServiceLocatorInterface;
+use Zend\View\Renderer\PhpRenderer;
 
 class Module extends AbstractModule
 {
@@ -43,6 +47,36 @@ class Module extends AbstractModule
         $conn->exec('DROP TABLE IF EXISTS alt_text');
     }
 
+    public function getConfigForm(PhpRenderer $renderer)
+    {
+        $services = $this->getServiceLocator();
+        $settings = $services->get('Omeka\Settings');
+        $form = $services->get('FormElementManager')->get(Form::class);
+        $form->add([
+            'type' => PropertySelect::class,
+            'name' => 'alt_text_property',
+            'options' => [
+                'label' => 'Alt text property', // @translate
+                'info' => 'Media property to use as alt text. Used only if no alt text is explicitly set for a media.', // @translate
+                'empty_option' => '[None]', // @translate
+                'term_as_value' => true,
+            ],
+            'attributes' => [
+                'id' => 'alt_text_fallback_property',
+                'class' => 'chosen-select',
+                'value' => $settings->get('alt_text_property'),
+            ],
+        ]);
+        return $renderer->formCollection($form, false);
+    }
+
+    public function handleConfigForm(AbstractController $controller)
+    {
+        $property = $controller->params()->fromPost('alt_text_property');
+        $settings = $this->getServiceLocator()->get('Omeka\Settings');
+        $settings->set('alt_text_property', $property);
+    }
+
     public function attachListeners(SharedEventManagerInterface $sharedEventManager)
     {
         $sharedEventManager->attach(
@@ -55,14 +89,23 @@ class Module extends AbstractModule
                 }
 
                 $attribs = $event->getParam('attribs');
-
-                $altText = $this->getAltTextForMedia($media);
-                if (!$altText) {
+                if (!empty($attribs['alt'])) {
                     return;
                 }
 
-                if (empty($attribs['alt'])) {
-                    $attribs['alt'] = $altText->getAltText();
+                $alt = null;
+                $altText = $this->getAltTextForMedia($media);
+                if ($altText) {
+                    $alt = $altText->getAltText();
+                }
+
+                if (!strlen($alt)) {
+                    $altValue = $this->getAltTextFallback($media);
+                    $alt = $altValue ? (string) $altValue : null;
+                }
+
+                if ($alt !== null) {
+                    $attribs['alt'] = $alt;
                 }
                 $event->setParam('attribs', $attribs);
             }
@@ -120,6 +163,16 @@ class Module extends AbstractModule
         $dql = 'SELECT alt FROM AltText\Entity\AltText alt WHERE alt.media = ?1';
         $query = $entityManager->createQuery($dql)->setParameter(1, $mediaId);
         return $query->getOneOrNullResult();
+    }
+
+    public function getAltTextFallback(MediaRepresentation $media)
+    {
+        $settings = $this->getServiceLocator()->get('Omeka\Settings');
+        $property = $settings->get('alt_text_property');
+        if (!$property) {
+            return null;
+        }
+        return $media->value($property);
     }
 
     /**
