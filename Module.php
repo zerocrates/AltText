@@ -229,4 +229,3 @@ class Module extends AbstractModule
         $altText->setAltText($requestAltText);
     }
 }
-
