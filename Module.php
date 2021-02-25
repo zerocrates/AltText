@@ -83,7 +83,7 @@ class Module extends AbstractModule
             '*',
             'view_helper.thumbnail.attribs',
             function (Event $event) {
-                $media = $event->getParam('primaryMedia');
+                $media = $event->getParam('representation')->primaryMedia();
                 if (!$media) {
                     return;
                 }
