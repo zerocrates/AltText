@@ -2,7 +2,24 @@
 
 An Omeka S module to allow users to specify custom alt text for media.
 
-The current version of the Alt Text module requires at least Omeka S 3.0.0.
+## This module is no longer required with Omeka S 3.1.0 and up
+
+Omeka S 3.1.0 integrates the features of this module directly in the core,
+accessible from the [Media edit form's Advanced tab](https://omeka.org/s/docs/user-manual/content/media/#advanced).
+
+The latest version of this module (1.3.0) provides a feature to copy all
+alt texts set using the module to the core. Once the texts are copied over,
+this module can be uninstalled. (Note: if using the "Alt text property"
+setting of this module, the core's equivalent "Media alt text property"
+global setting should be set to the same property for the same effect.)
+
+Users of Omeka S 3.1.0+ who upgraded from prior versions should only upgrade
+this module and then migrate to the core's alt text feature. For fresh
+installations of Omeka S 3.1.0+ or ones which never previously used this
+module, there is no benefit to installing this module.
+
+Users of older versions of Omeka S can use the prior versions of this module
+listed on the Omeka S Modules directory appropriate to their Omeka S version.
 
 ## Usage
 

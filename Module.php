@@ -8,6 +8,7 @@ use Omeka\Api\Representation\MediaRepresentation;
 use Omeka\Entity\Media as MediaEntity;
 use Omeka\Form\Element\PropertySelect;
 use Omeka\Module\AbstractModule;
+use Omeka\Module\Exception\ModuleCannotInstallException;
 use Laminas\EventManager\Event;
 use Laminas\EventManager\SharedEventManagerInterface;
 use Laminas\Form\Form;
@@ -36,6 +37,9 @@ class Module extends AbstractModule
 
     public function install(ServiceLocatorInterface $serviceLocator)
     {
+        // Module supports upgrades only
+        throw new ModuleCannotInstallException('Module not installed. Omeka S 3.1.0 and up no longer require the Alt Text module. This version is only used to migrate existing installs.');
+
         $conn = $serviceLocator->get('Omeka\Connection');
         $conn->exec('CREATE TABLE alt_text (id INT AUTO_INCREMENT NOT NULL, media_id INT NOT NULL, alt_text LONGTEXT DEFAULT NULL, UNIQUE INDEX UNIQ_54A36CBEA9FDD75 (media_id), PRIMARY KEY(id)) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci ENGINE = InnoDB');
         $conn->exec('ALTER TABLE alt_text ADD CONSTRAINT FK_54A36CBEA9FDD75 FOREIGN KEY (media_id) REFERENCES media (id) ON DELETE CASCADE');
@@ -67,7 +71,30 @@ class Module extends AbstractModule
                 'value' => $settings->get('alt_text_property'),
             ],
         ]);
-        return $renderer->formCollection($form, false);
+        $form->add([
+            'type' => 'Select',
+            'name' => 'migrate_operation',
+            'options' => [
+                'label' => 'Migrate texts to core',
+                'info' => ' Use this option to copy all alt texts set using this module to the core.'
+                        . ' You can choose whether or not the copied texts should overwrite any core alt texts that may be already set.',
+                'empty_option' => 'No action',
+                'value_options' => [
+                    'migrate' => 'Copy alt texts to core',
+                    'migrate_overwrite' => 'Copy alt texts to core (overwrite)',
+                ]
+            ],
+            'attributes' => [
+                'id' => 'alt_text_migrate_operation',
+            ],
+        ]);
+        $text = '<p><strong>The Alt Text module is no longer required with Omeka S 3.1 and up</strong></p>'
+              . '<p>Omeka S 3.1 and up integrate alt text support in the core. This module is no longer required with'
+              . ' those versions. The "Alt text property" setting here has an equivalent "Media alt text property" setting'
+              . ' in the global settings. The new "Migrate texts to core" setting here copies existing alt texts set using this module'
+              . ' to the core (note, the core alt text input is found in the Advanced tab of the media edit form).'
+              . ' When the texts from this module have been migrated, you can uninstall the module.</p>';
+        return $text . $renderer->formCollection($form, false);
     }
 
     public function handleConfigForm(AbstractController $controller)
@@ -75,6 +102,22 @@ class Module extends AbstractModule
         $property = $controller->params()->fromPost('alt_text_property');
         $settings = $this->getServiceLocator()->get('Omeka\Settings');
         $settings->set('alt_text_property', $property);
+
+        $migrateOperation = $controller->params()->fromPost('migrate_operation');
+        $sql = 'UPDATE media m INNER JOIN alt_text a ON m.id = a.media_id SET m.alt_text = a.alt_text';
+        switch ($migrateOperation) {
+            case 'migrate':
+                $sql .= " WHERE m.alt_text IS NULL OR m.alt_text = ''";
+                // fallthrough
+            case 'migrate_overwrite':
+                $stmt = $this->getServiceLocator()->get('Omeka\Connection')->prepare($sql);
+                $stmt->execute();
+                $count = $stmt->rowCount();
+                $controller->messenger()->addSuccess("Alt texts migrated ($count total).");
+                break;
+            default:
+                // no action
+        }
     }
 
     public function attachListeners(SharedEventManagerInterface $sharedEventManager)
